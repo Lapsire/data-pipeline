@@ -62,7 +62,7 @@ const run = async() => {
     await producer.connect();
     console.log("Kafka connected.");
 
-    server.listen(process.env.PORT, () => {
+    server.listen(process.env.API_PORT || 3000, () => {
         console.log(`LAUNCH APP ON http://localhost:${process.env.API_PORT}`);
     });
 }
