@@ -27,7 +27,7 @@ services:
       MYSQL_DATABASE: ${MYSQL_DATABASE}
     volumes:
       # Init database
-      - ./files/sql/db-users.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./mysql/db-users.sql:/docker-entrypoint-initdb.d/init.sql
       # Uncomment to keep data after down
       # - ./mysql_data:/var/lib/mysql
 
