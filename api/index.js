@@ -1,4 +1,4 @@
-require('dotenv').config();
+require('dotenv').config({ path: '../.env' });
 
 const SOCKET_EVENTS = {
     USER_UPDATE_EVENT: 'user_update',
@@ -15,6 +15,7 @@ const server = http.createServer(app);
 const io = new Server(server);        
 
 app.use(express.json());
+app.use(express.static('public')); // SERVE DASHBOARD
 
 // PRODUCER KAFKA
 const kafka = new Kafka({
