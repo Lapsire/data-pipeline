@@ -1,4 +1,4 @@
-require('dotenv').config({ path: '../.env' });
+require('dotenv').config({ path: '../.env' }); // When local, not mandatory in docker
 
 const SOCKET_EVENTS = {
     USER_UPDATE_EVENT: 'user_update',
@@ -63,7 +63,7 @@ const run = async() => {
     console.log("Kafka connected.");
 
     server.listen(process.env.PORT, () => {
-        console.log(`LAUNCH APP ON http://localhost:${process.env.PORT}`);
+        console.log(`LAUNCH APP ON http://localhost:${process.env.API_PORT}`);
     });
 }
 
