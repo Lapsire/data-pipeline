@@ -58,3 +58,29 @@ services:
       - KAFKA_CLIENT_ID=${KAFKA_CLIENT_ID}
     depends_on:
       - kafka
+
+  # SPARK CLUSTER
+  spark-master:
+    image: bitnamilegacy/spark:3.5.1 
+    container_name: spark-master
+    environment:
+      - SPARK_MODE=master
+      - SPARK_RPC_AUTHENTICATION_ENABLED=no
+      - SPARK_RPC_ENCRYPTION_ENABLED=no
+      - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
+      - SPARK_SSL_ENABLED=no
+    ports:
+      - "${SPARK_CONSUMER_WEB_UI_PORT}:8080"
+
+  spark-worker:
+    image: bitnamilegacy/spark:3.5.1 
+    container_name: spark-worker
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://spark-master:7077
+      - SPARK_WORKER_MEMORY=${SPARK_CONSUMER_WORKERS_MEM}
+      - SPARK_WORKER_CORES=${SPARK_CONSUMER_WORKERS_CORES} 
+    depends_on:
+      - spark-master
+    volumes:
+      - ./spark:/opt/bitnami/spark/jobs
