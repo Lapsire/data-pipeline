@@ -41,7 +41,7 @@ app.post(
         const data = req.body;
 
        try {
-            await sendToKafka(data, process.env.KAFKA_TOPIC);
+            await sendToKafka(data, process.env.KAFKA_TOPIC_DATA);
             io.emit(SOCKET_EVENTS.USER_UPDATE_EVENT, data);
 
             return res.status(200).json({
