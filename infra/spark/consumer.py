@@ -22,8 +22,7 @@ json_schema = StructType([
     StructField("email", StringType(), True),
     StructField("password", StringType(), True),
     StructField("city", StringType(), True),
-    StructField("sent_at", TimestampType(), True),
-    StructField("created_at", TimestampType(), True)
+    StructField("sent_at", TimestampType(), True)
 ])
 
 # Read users update topic from kafka
