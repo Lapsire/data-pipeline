@@ -95,5 +95,18 @@ services:
       - SPARK_WORKER_CORES=${SPARK_CONSUMER_WORKERS_CORES} 
     depends_on:
       - spark-master
+
+  spark-submitter:
+    image: bitnamilegacy/spark:3.5.1
+    container_name: spark-submitter
+    depends_on:
+      - spark-master
+      - spark-worker
+      - kafka-init
     volumes:
       - ./spark:/opt/bitnami/spark/jobs
+    environment:
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - MYSQL_DATABASE=${MYSQL_DATABASE}
+      - KAFKA_TOPIC_DATA=${KAFKA_TOPIC_DATA}
+    command: bash /opt/bitnami/spark/jobs/launch-consumer.sh
