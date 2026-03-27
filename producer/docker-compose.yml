@@ -1,0 +1,103 @@
+services:
+
+  # SPARK DATA GENERATOR
+  spark-master-producer:
+    image: bitnamilegacy/spark:3.5.1 
+    container_name: spark-master-producer
+    environment:
+      - SPARK_MODE=master
+      - SPARK_RPC_AUTHENTICATION_ENABLED=no
+      - SPARK_RPC_ENCRYPTION_ENABLED=no
+      - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
+      - SPARK_SSL_ENABLED=no
+    ports:
+      - "${SPARK_PRODUCER_WEB_UI}:8080"
+      - "${SPARK_PRODUCER_MASTER_PORT}:7077"
+
+  spark-worker-producer:
+    image: bitnamilegacy/spark:3.5.1
+    container_name: spark-worker-producer
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://spark-master-producer:7077
+      - SPARK_WORKER_MEMORY=${SPARK_CONSUMER_WORKERS_MEM}
+      - SPARK_WORKER_CORES=${SPARK_CONSUMER_WORKERS_CORES} 
+
+    depends_on:
+      - spark-master-producer
+
+    volumes:
+      - ./shared-data:/opt/bitnami/spark/data
+
+  # LAUNCH PYTHON SCRIPT TO GENERATE DATA
+  spark-submitter-producer:
+    image: bitnamilegacy/spark:3.5.1
+    container_name: spark-submitter-producer
+    depends_on:
+      - spark-master-producer
+      - spark-worker-producer
+    volumes:
+      - ./spark:/opt/bitnami/spark/jobs
+    command: bash /opt/bitnami/spark/jobs/launch-producer.sh
+
+  # HTTP WORKERS
+  # MAKES API CALL
+  http-worker-1:
+    image: python:3.11-slim
+    container_name: http-worker-1
+    environment:
+      - WORKER_ID=1
+      - TOTAL_WORKERS=5
+      - TARGET_API=${API_ADDR}
+    volumes:
+      - ./http:/scripts
+      - ./shared-data:/data
+    command: python /scripts/http_jobs.py
+
+  http-worker-2:
+    image: python:3.11-slim
+    container_name: http-worker-2
+    environment:
+      - WORKER_ID=2
+      - TOTAL_WORKERS=5
+      - TARGET_API=${API_ADDR}
+    volumes:
+      - ./http:/scripts
+      - ./shared-data:/data
+    command: python /scripts/http_jobs.py
+
+  http-worker-3:
+    image: python:3.11-slim
+    container_name: http-worker-3
+    environment:
+      - WORKER_ID=3
+      - TOTAL_WORKERS=5
+      - TARGET_API=${API_ADDR}
+    volumes:
+      - ./http:/scripts
+      - ./shared-data:/data
+    command: python /scripts/http_jobs.py
+
+  http-worker-4:
+    image: python:3.11-slim
+    container_name: http-worker-4
+    environment:
+      - WORKER_ID=4
+      - TOTAL_WORKERS=5
+      - TARGET_API=${API_ADDR}
+    volumes:
+      - ./http:/scripts
+      - ./shared-data:/data
+    command: python /scripts/http_jobs.py
+
+  http-worker-5:
+    image: python:3.11-slim
+    container_name: http-worker-5
+    environment:
+      - WORKER_ID=5
+      - TOTAL_WORKERS=5
+      - TARGET_API=${API_ADDR}
+    volumes:
+      - ./http:/scripts
+      - ./shared-data:/data
+    command: python /scripts/http_jobs.py
