@@ -35,7 +35,7 @@ df = spark.readStream \
     .load()
 
 # Apply shape to the raw data from kafka
-parsed_df = df.selectExpr("CAST(value AS STRING)") \
+parsed_df = df.selectExpr("cast(value as string)") \
     .select(from_json(col("value"), json_schema).alias("data")) \
     .select("data.*") \
     .withColumn("created_at", current_timestamp())
