@@ -44,6 +44,9 @@ services:
     depends_on:
       - spark-master-producer
       - spark-worker-producer
+    environment:
+      - NUM_ROWS=${NUM_ROWS}
+      - NUM_SHARDS=${NUM_SHARDS}
     volumes:
       - ./spark:/opt/bitnami/spark/jobs
       - spark-data-volume:/data
