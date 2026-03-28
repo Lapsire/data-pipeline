@@ -1,6 +1,8 @@
 import os
 import requests
 import time
+import json
+from datetime import datetime
 
 def keep_worker_files(worker_id, total_workers, path) -> list :
     if not os.path.exists(path) :
@@ -22,7 +24,9 @@ def keep_worker_files(worker_id, total_workers, path) -> list :
 def process_file(path, url, session) :
     with open(path, "r") as f :
         for line in f :
-            session.post(url, line)
+            data = json.loads(line)
+            data['sent_at'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            session.post(url, json=data)
 
 if __name__ == "__main__" :
     # Waiting spark to generate data

@@ -19,8 +19,7 @@ generated_df = df.select(
     expr("cast(rand() * 82 + 18 as int)").alias("age"),
     expr("concat(name, '@example.com')").alias("email"),
     expr("uuid()").alias("password"),
-    expr("element_at(array('Paris', 'Nice', 'Toulon', 'Lyon'), cast(rand() * 4 + 1 as int))").alias("city"),
-    expr("current_timestamp()").alias("sent_at")
+    expr("element_at(array('Paris', 'Nice', 'Toulon', 'Lyon'), cast(rand() * 4 + 1 as int))").alias("city")
 )
 
 generated_df.write \
