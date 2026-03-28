@@ -8,7 +8,6 @@ NUM_SHARDS = int(os.getenv("NUM_SHARDS", 100))
 
 spark = SparkSession.builder \
     .appName("producer") \
-    .master("local[2]") \
     .getOrCreate()
 
 spark.sparkContext.setLogLevel("WARN") # To get a clean terminal
@@ -26,5 +25,5 @@ generated_df = df.select(
 
 generated_df.write \
     .mode("overwrite") \
-    .json("test")
+    .json("/data/users")
 
