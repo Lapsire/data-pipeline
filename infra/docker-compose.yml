@@ -70,7 +70,8 @@ services:
       - KAFKA_TOPIC_DATA=${KAFKA_TOPIC_DATA}
       - KAFKA_CLIENT_ID=${KAFKA_CLIENT_ID}
     depends_on:
-      - kafka
+      kafka-init:
+        condition: service_completed_successfully
 
   # SPARK CLUSTER
   spark-master:
