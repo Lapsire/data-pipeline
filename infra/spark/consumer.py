@@ -14,7 +14,7 @@ def write_to_mysql(batch_df, batch_id):
     """
     Write a data batch into the database.
     """
-    batch_df.write \
+    batch_df.drop("latency_seconds").write \
         .format("jdbc") \
         .option("url", f"jdbc:mysql://mysql:3306/{MYSQL_DB}?useSSL=false&allowPublicKeyRetrieval=true") \
         .option("driver", "com.mysql.cj.jdbc.Driver") \
