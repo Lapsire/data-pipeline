@@ -1,81 +1,167 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="en" class="dark">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard</title>
-    
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
-    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
     <style>
-        body {
-            background-color: #1a1a1a;
-            font-family: 'JetBrains Mono', monospace;
-            color: #eee;
-        }
-        #terminal-container {
-            background-color: #000;
-            border: 2px solid #333;
-            height: 70vh;
-            overflow-y: auto;
-            box-shadow: 0 0 20px rgba(0, 255, 65, 0.1);
-        }
-        .log-line {
-            font-size: 0.9rem;
-            border-bottom: 1px solid #111;
-        }
-        .timestamp { color: #666; }
-        .badge-kafka { font-size: 0.7rem; vertical-align: middle; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #1f2937; }
+        ::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #6b7280; }
     </style>
 </head>
-<body class="py-5">
+<body class="bg-gray-900 text-white font-sans min-h-screen p-6">
 
-<div class="container">
-    <div class="row justify-content-center">
-        <div class="col-md-10">
-            
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h2 class="text-success m-0">DATA_STREAM_MONITOR</h2>
-            </div>
-
-            <div id="terminal-container" class="rounded p-3 shadow-lg">
-                <div id="logs">
-                    <p class="text-secondary">[SYSTEM] Initializing console...</p>
-                </div>
-            </div>
-
-            <p class="mt-3 text-secondary small text-center">
-                Listening on topic: <code class="text-info">users</code>
-            </p>
-
+    <header class="mb-8 border-b border-gray-700 pb-4 flex justify-between items-center">
+        <div>
+            <h1 class="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-500">
+                DASHBOARD
+            </h1>
         </div>
+    </header>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+        <div class="bg-gray-800 rounded-xl p-6 border border-gray-700 shadow-lg col-span-1 lg:col-span-1 flex flex-col justify-center items-center">
+            <h2 class="text-gray-400 text-sm font-semibold uppercase tracking-wider mb-2">Total Users Ingested</h2>
+            <div id="total-users" class="text-6xl font-black text-blue-400 tabular-nums">0</div>
+            <p class="text-gray-500 text-xs mt-2">Comes from HTTP Workers</p>
+        </div>
+
+        <div class="bg-gray-800 rounded-xl p-6 border border-gray-700 shadow-lg col-span-1 lg:col-span-2">
+            <h2 class="text-gray-400 text-sm font-semibold uppercase tracking-wider mb-4">Live Volume by City (10s Window)</h2>
+            <div class="relative h-64 w-full">
+                <canvas id="cityChart"></canvas>
+            </div>
+        </div>
+
+        <div class="bg-gray-800 rounded-xl p-6 border border-gray-700 shadow-lg col-span-1 lg:col-span-2">
+            <h2 class="text-gray-400 text-sm font-semibold uppercase tracking-wider mb-4">Live Raw Feed</h2>
+            <div class="bg-gray-900 rounded border border-gray-700 h-64 overflow-y-auto p-4 font-mono text-xs" id="live-feed">
+                </div>
+        </div>
+
+        <div class="bg-gray-800 rounded-xl p-6 border border-gray-700 shadow-lg col-span-1 lg:col-span-1">
+            <h2 class="text-gray-400 text-sm font-semibold uppercase tracking-wider mb-4">Avg Latency (End-to-End)</h2>
+            <ul id="latency-list" class="space-y-4">
+                <li class="text-gray-500 italic text-sm">Waiting for Spark calculations...</li>
+                </ul>
+        </div>
+
     </div>
-</div>
 
-<script src="/socket.io/socket.io.js"></script>
-<script>
-    const socket = io();
-    const logsContainer = document.getElementById('logs');
-    const terminal = document.getElementById('terminal-container');
+    <script>
+        const socket = io();
 
-    socket.on('user_update', (data) => {
-        const time = new Date().toLocaleTimeString();
-        
-        const div = document.createElement('div');
-        div.className = 'log-line py-1';
-        div.innerHTML = `
-            <span class="timestamp">[${time}]</span> 
-            <span class="text-info">INCOMING:</span> 
-            <span class="text-warning">${data.name}</span> 
-            <span class="text-muted">from</span> 
-            <span class="text-success">${data.city}</span>
-        `;
-        
-        logsContainer.appendChild(div);
+        // State vars
+        let totalIngested = 0;
+        const chartData = {
+            labels: ['Paris', 'Lyon', 'Nice', 'Toulon'],
+            datasets: [{
+                label: 'Users per 10s',
+                data: [0, 0, 0, 0],
+                backgroundColor: [
+                    'rgba(59, 130, 246, 0.8)', // Blue
+                    'rgba(139, 92, 246, 0.8)', // Purple
+                    'rgba(16, 185, 129, 0.8)', // Emerald
+                    'rgba(245, 158, 11, 0.8)'  // Amber
+                ],
+                borderRadius: 4
+            }]
+        };
 
-        terminal.scrollTop = terminal.scrollHeight;
-    });
-</script>
+        const ctx = document.getElementById('cityChart').getContext('2d');
+        const cityChart = new Chart(ctx, {
+            type: 'bar',
+            data: chartData,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: { duration: 500 },
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: { beginAtZero: true, grid: { color: '#374151' }, ticks: { color: '#9CA3AF' } },
+                    x: { grid: { display: false }, ticks: { color: '#9CA3AF' } }
+                }
+            }
+        });
 
+        const totalUsersEl = document.getElementById('total-users');
+        const liveFeedEl = document.getElementById('live-feed');
+
+        socket.on('user_update', (user) => {
+            // Update Global Counter
+            totalIngested++;
+            totalUsersEl.innerText = totalIngested.toLocaleString();
+
+            // Add to Live Feed
+            const logEntry = document.createElement('div');
+            logEntry.className = 'mb-1 flex gap-3 text-gray-300';
+            logEntry.innerHTML = `
+                <span class="text-green-400">[${new Date().toLocaleTimeString()}]</span> 
+                <span class="text-blue-300 font-bold">${user.city}</span> 
+                <span>${user.name} (${user.age} yo) ingested.</span>
+            `;
+            liveFeedEl.prepend(logEntry);
+
+            // Keep only last 50 logs to avoid memory leak
+            if (liveFeedEl.children.length > 50) {
+                liveFeedEl.lastChild.remove();
+            }
+        });
+
+        // isten the metrics
+        const latencyListEl = document.getElementById('latency-list');
+        // Store the latest metrics per city to update the UI
+        const currentMetrics = {}; 
+
+        socket.on('metrics_update', (metric) => {
+            // Clean the "waiting" message on first payload
+            if (latencyListEl.innerHTML.includes("Waiting")) latencyListEl.innerHTML = '';
+
+            const city = metric.city;
+            const volume = metric.volume;
+            // Round latency to 3 decimals
+            const latency = parseFloat(metric.avg_latency).toFixed(3); 
+
+            // Save to local state
+            currentMetrics[city] = { volume, latency };
+
+            // Update the chart
+            const cityIndex = chartData.labels.indexOf(city);
+            if (cityIndex !== -1) {
+                chartData.datasets[0].data[cityIndex] = volume;
+                cityChart.update();
+            }
+
+            renderLatencyBoard();
+        });
+
+        function renderLatencyBoard() {
+            latencyListEl.innerHTML = '';
+            for (const [city, data] of Object.entries(currentMetrics)) {
+                
+                // Determine color based on latency (Good < 0.5s, Medium < 1.5s, Bad > 1.5s)
+                let colorClass = "text-green-400";
+                if (data.latency > 1.5) colorClass = "text-red-400";
+                else if (data.latency > 0.5) colorClass = "text-yellow-400";
+
+                const li = document.createElement('li');
+                li.className = 'flex justify-between items-center bg-gray-700/50 p-3 rounded-lg border border-gray-600';
+                li.innerHTML = `
+                    <span class="font-semibold text-gray-200">${city}</span>
+                    <div class="flex flex-col items-end">
+                        <span class="${colorClass} font-mono font-bold">${data.latency}s</span>
+                        <span class="text-xs text-gray-400">${data.volume} msgs/10s</span>
+                    </div>
+                `;
+                latencyListEl.appendChild(li);
+            }
+        }
+    </script>
 </body>
 </html>
