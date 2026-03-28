@@ -109,4 +109,5 @@ services:
       - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
       - MYSQL_DATABASE=${MYSQL_DATABASE}
       - KAFKA_TOPIC_DATA=${KAFKA_TOPIC_DATA}
+      - BATCH_INTERVAL=${BATCH_INTERVAL_SEC}
     command: bash /opt/bitnami/spark/jobs/launch-consumer.sh

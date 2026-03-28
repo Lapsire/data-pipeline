@@ -1,0 +1,117 @@
+services:
+
+  volume-fixer:
+    image: alpine
+    container_name: volume-fixer
+    volumes:
+      - spark-data-volume:/data
+    command: chown -R 1001:1001 /data
+
+  # SPARK DATA GENERATOR
+  spark-master-producer:
+    image: bitnamilegacy/spark:3.5.1 
+    container_name: spark-master-producer
+    depends_on:
+      volume-fixer:
+        condition: service_completed_successfully
+    environment:
+      - SPARK_MODE=master
+      - SPARK_RPC_AUTHENTICATION_ENABLED=no
+      - SPARK_RPC_ENCRYPTION_ENABLED=no
+      - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
+      - SPARK_SSL_ENABLED=no
+    ports:
+      - "${SPARK_PRODUCER_WEB_UI_PORT}:8080"
+      - "6060:7077"
+
+  spark-worker-producer:
+    image: bitnamilegacy/spark:3.5.1
+    container_name: spark-worker-producer
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://spark-master-producer:7077
+      - SPARK_WORKER_MEMORY=${SPARK_CONSUMER_WORKERS_MEM}
+      - SPARK_WORKER_CORES=${SPARK_CONSUMER_WORKERS_CORES} 
+    depends_on:
+      - spark-master-producer
+    volumes:
+      - spark-data-volume:/data
+
+  # LAUNCH PYTHON SCRIPT TO GENERATE DATA
+  spark-submitter-producer:
+    image: bitnamilegacy/spark:3.5.1
+    container_name: spark-submitter-producer
+    depends_on:
+      - spark-master-producer
+      - spark-worker-producer
+    environment:
+      - NUM_ROWS=${NUM_ROWS}
+      - NUM_SHARDS=${NUM_SHARDS}
+    volumes:
+      - ./spark:/opt/bitnami/spark/jobs
+      - spark-data-volume:/data
+    command: bash /opt/bitnami/spark/jobs/launch-producer.sh
+
+  # HTTP WORKERS
+  http-worker-1:
+    build: ./http
+    container_name: http-worker-1
+    environment:
+      - WORKER_ID=0
+      - TOTAL_WORKERS=5
+      - TARGET_API=${API_ADDR}
+      - API_PORT=${API_PORT}
+    volumes:
+      - ./http:/scripts
+      - spark-data-volume:/data
+
+  http-worker-2:
+    build: ./http
+    container_name: http-worker-2
+    environment:
+      - WORKER_ID=1
+      - TOTAL_WORKERS=5
+      - TARGET_API=${API_ADDR}
+      - API_PORT=${API_PORT}
+    volumes:
+      - ./http:/scripts
+      - spark-data-volume:/data
+
+  http-worker-3:
+    build: ./http
+    container_name: http-worker-3
+    environment:
+      - WORKER_ID=2
+      - TOTAL_WORKERS=5
+      - TARGET_API=${API_ADDR}
+      - API_PORT=${API_PORT}
+    volumes:
+      - ./http:/scripts
+      - spark-data-volume:/data
+
+  http-worker-4:
+    build: ./http
+    container_name: http-worker-4
+    environment:
+      - WORKER_ID=3
+      - TOTAL_WORKERS=5
+      - TARGET_API=${API_ADDR}
+      - API_PORT=${API_PORT}
+    volumes:
+      - ./http:/scripts
+      - spark-data-volume:/data
+
+  http-worker-5:
+    build: ./http
+    container_name: http-worker-5
+    environment:
+      - WORKER_ID=4
+      - TOTAL_WORKERS=5
+      - TARGET_API=${API_ADDR}
+      - API_PORT=${API_PORT}
+    volumes:
+      - ./http:/scripts
+      - spark-data-volume:/data
+
+volumes:
+  spark-data-volume:
