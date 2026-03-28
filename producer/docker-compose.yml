@@ -30,8 +30,8 @@ services:
     environment:
       - SPARK_MODE=worker
       - SPARK_MASTER_URL=spark://spark-master-producer:7077
-      - SPARK_WORKER_MEMORY=${SPARK_CONSUMER_WORKERS_MEM}
-      - SPARK_WORKER_CORES=${SPARK_CONSUMER_WORKERS_CORES} 
+      - SPARK_WORKER_MEMORY=${SPARK_PRODUCER_WORKERS_MEM}
+      - SPARK_WORKER_CORES=${SPARK_PRODUCER_WORKERS_CORES} 
     depends_on:
       - spark-master-producer
     volumes:

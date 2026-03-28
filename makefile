@@ -9,6 +9,7 @@ producer-up:
 
 producer-down:
 	docker compose --env-file .env -f producer/docker-compose.yml down
+	docker run --rm -v producer_spark-data-volume:/data alpine rm -rf /data/users
 
 up:
 	make infra-up
