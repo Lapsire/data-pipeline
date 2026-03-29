@@ -53,13 +53,13 @@ parsed_df = df.selectExpr("cast(value as string)") \
     .select(from_json(col("value"), json_schema).alias("data")) \
     .select("data.*") \
     .withColumn("created_at", current_timestamp()) \
-    .withColumn("latency_seconds", expr("unix_timestamp(created_at) - unix_timestamp(sent_at)"))
+    .withColumn("latency_seconds", expr("cast(created_at as double) - cast(sent_at as double)"))
 
 # Compute metrics
 metrics_df = parsed_df \
-    .withWatermark("sent_at", "10 seconds") \
+    .withWatermark("sent_at", "1 minute") \
     .groupBy(
-        window(col("sent_at"), "10 seconds"), 
+        window(col("sent_at"), "1 minute"), 
         col("city")
     ) \
     .agg(
@@ -84,6 +84,7 @@ query_metrics = kafka_metrics_df.writeStream \
 # Write data flux in db  
 query = parsed_df.writeStream \
 .foreachBatch(write_to_mysql) \
+.option("checkpointLocation", "/tmp/spark_checkpoints_mysql") \
 .trigger(processingTime=BATCH_INTERVAL) \
 .start()
 

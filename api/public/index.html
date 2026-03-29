@@ -33,7 +33,7 @@
         </div>
 
         <div class="bg-gray-800 rounded-xl p-6 border border-gray-700 shadow-lg col-span-1 lg:col-span-2">
-            <h2 class="text-gray-400 text-sm font-semibold uppercase tracking-wider mb-4">Live Volume by City (10s Window)</h2>
+            <h2 class="text-gray-400 text-sm font-semibold uppercase tracking-wider mb-4">Live Volume by City (1 min Window)</h2>
             <div class="relative h-64 w-full">
                 <canvas id="cityChart"></canvas>
             </div>
@@ -62,7 +62,7 @@
         const chartData = {
             labels: ['Paris', 'Lyon', 'Nice', 'Toulon'],
             datasets: [{
-                label: 'Users per 10s',
+                label: 'Users per 1 min',
                 data: [0, 0, 0, 0],
                 backgroundColor: [
                     'rgba(59, 130, 246, 0.8)', // Blue
@@ -73,6 +73,7 @@
                 borderRadius: 4
             }]
         };
+        let latestWindowStart = "";
 
         const ctx = document.getElementById('cityChart').getContext('2d');
         const cityChart = new Chart(ctx, {
@@ -114,16 +115,22 @@
             }
         });
 
-        // isten the metrics
+        // Listen the metrics
         const latencyListEl = document.getElementById('latency-list');
         // Store the latest metrics per city to update the UI
         const currentMetrics = {}; 
 
         socket.on('metrics_update', (metric) => {
-            // Clean the "waiting" message on first payload
             if (latencyListEl.innerHTML.includes("Waiting")) latencyListEl.innerHTML = '';
 
             const city = metric.city;
+            const windowStart = metric.window.start; 
+            if (windowStart < latestWindowStart) return;
+            
+            if (windowStart > latestWindowStart) {
+                latestWindowStart = windowStart;
+            }
+
             const volume = metric.volume;
             // Round latency to 3 decimals
             const latency = parseFloat(metric.avg_latency).toFixed(3); 
@@ -156,7 +163,7 @@
                     <span class="font-semibold text-gray-200">${city}</span>
                     <div class="flex flex-col items-end">
                         <span class="${colorClass} font-mono font-bold">${data.latency}s</span>
-                        <span class="text-xs text-gray-400">${data.volume} msgs/10s</span>
+                        <span class="text-xs text-gray-400">${data.volume} msgs/1 min</span>
                     </div>
                 `;
                 latencyListEl.appendChild(li);
