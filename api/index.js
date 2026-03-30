@@ -64,8 +64,12 @@ app.post(
                 topic: process.env.KAFKA_TOPIC_DATA,
                 messages: messages
             });
+            const frontendPayload = {
+                count: batch.length,
+                samples: batch.slice(-1)
+            };
 
-            io.emit('user_update_batch', batch);
+            io.emit('user_update_batch', frontendPayload);
 
             return res.status(200).json({
                 message: "Batch OK",
