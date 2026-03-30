@@ -20,11 +20,12 @@ def process_batch(batch_df, batch_id):
     if count > 0 :
         batch_df.drop("latency_seconds").write \
             .format("jdbc") \
-            .option("url", f"jdbc:mysql://mysql:3306/{MYSQL_DB}?useSSL=false&allowPublicKeyRetrieval=true") \
+            .option("url", f"jdbc:mysql://mysql:3306/{MYSQL_DB}?useSSL=false&allowPublicKeyRetrieval=true&rewriteBatchedStatements=true") \
             .option("driver", "com.mysql.cj.jdbc.Driver") \
             .option("dbtable", "users") \
             .option("user", "root") \
             .option("password", MYSQL_PWD) \
+            .option("batchsize", "10000") \
             .mode("append") \
             .save()
 
@@ -41,20 +42,20 @@ def process_batch(batch_df, batch_id):
 
         # Send metrics to kafka
         metrics = [(
-            count, 
-            throughput, 
-            latency_metrics["min_latency"],
-            latency_metrics["max_latency"],
-            latency_metrics["avg_latency"]
+            int(count), 
+            float(throughput), 
+            float(latency_metrics["min_latency"]),
+            float(latency_metrics["max_latency"]),
+            float(latency_metrics["avg_latency"])
         )]
 
-        column = ["count", "troughput", "min_latency", "max_latency", "avg_latency"]
+        column = ["count", "throughput", "min_latency", "max_latency", "avg_latency"]
         metrics_df = spark.createDataFrame(metrics, column)
 
         metrics_df.selectExpr("to_json(struct(*)) as value").write \
             .format("kafka") \
             .option("kafka.bootstrap.servers", "kafka:29092") \
-            .option("topic", "metrics") \
+            .option("topic", KAFKA_TOPIC_METRICS) \
             .save()
     
     batch_df.unpersist()
