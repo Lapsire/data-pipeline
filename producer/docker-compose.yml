@@ -52,63 +52,27 @@ services:
       - spark-data-volume:/data
     command: bash /opt/bitnami/spark/jobs/launch-producer.sh
 
+  # Queue
+  redis:
+    image: redis:alpine
+    container_name: redis-queue
+    ports:
+      - "${REDIS_PORT}:6379"
+
   # HTTP WORKERS
-  http-worker-1:
+  http-worker:
     build: ./http
-    container_name: http-worker-1
+    deploy:
+      replicas: ${HTTP_WORKERS_REPLICAS}
+    depends_on:
+      - redis
     environment:
-      - WORKER_ID=0
-      - TOTAL_WORKERS=5
       - TARGET_API=${API_ADDR}
       - API_PORT=${API_PORT}
-    volumes:
-      - ./http:/scripts
-      - spark-data-volume:/data
-
-  http-worker-2:
-    build: ./http
-    container_name: http-worker-2
-    environment:
-      - WORKER_ID=1
-      - TOTAL_WORKERS=5
-      - TARGET_API=${API_ADDR}
-      - API_PORT=${API_PORT}
-    volumes:
-      - ./http:/scripts
-      - spark-data-volume:/data
-
-  http-worker-3:
-    build: ./http
-    container_name: http-worker-3
-    environment:
-      - WORKER_ID=2
-      - TOTAL_WORKERS=5
-      - TARGET_API=${API_ADDR}
-      - API_PORT=${API_PORT}
-    volumes:
-      - ./http:/scripts
-      - spark-data-volume:/data
-
-  http-worker-4:
-    build: ./http
-    container_name: http-worker-4
-    environment:
-      - WORKER_ID=3
-      - TOTAL_WORKERS=5
-      - TARGET_API=${API_ADDR}
-      - API_PORT=${API_PORT}
-    volumes:
-      - ./http:/scripts
-      - spark-data-volume:/data
-
-  http-worker-5:
-    build: ./http
-    container_name: http-worker-5
-    environment:
-      - WORKER_ID=4
-      - TOTAL_WORKERS=5
-      - TARGET_API=${API_ADDR}
-      - API_PORT=${API_PORT}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - CONCURRENCY=${HTTP_WORKERS_CONCURRENCY}
+      - BATCH_SIZE=${HTTP_WORKERS_BATCH_SIZE}
     volumes:
       - ./http:/scripts
       - spark-data-volume:/data
