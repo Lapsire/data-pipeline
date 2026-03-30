@@ -71,6 +71,36 @@ app.post(
     }
 );
 
+app.post(
+    '/users/batch',
+    async (req, res) => {
+        const batch = req.body;
+
+        if (!Array.isArray(batch)) {
+            return res.status(400).json({ error: "Data must be an array." });
+        }
+
+        try {
+            const messages = batch.map(data => ({ value: JSON.stringify(data) }));
+
+            await producer.send({
+                topic: process.env.KAFKA_TOPIC_DATA,
+                messages: messages
+            });
+
+            io.emit('user_update_batch', batch);
+            
+            return res.status(200).json({
+                message: "Batch OK",
+                count: batch.length
+            });
+        } catch (error) {
+            console.error("Kafka error :", error.message);
+            res.status(500).json({ error: "Kafka error" });
+        }
+    }
+);
+
 // LAUNCH
 const run = async() => {
     await producer.connect();

@@ -71,6 +71,8 @@ services:
       - API_PORT=${API_PORT}
       - REDIS_HOST=redis
       - REDIS_PORT=6379
+      - CONCURRENCY=${HTTP_WORKERS_CONCURRENCY}
+      - BATCH_SIZE=${HTTP_WORKERS_BATCH_SIZE}
     volumes:
       - ./http:/scripts
       - spark-data-volume:/data

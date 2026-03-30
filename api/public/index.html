@@ -115,6 +115,31 @@
             }
         });
 
+        socket.on('user_update_batch', (batch) => {
+            totalIngested += batch.length;
+            totalUsersEl.innerText = totalIngested.toLocaleString();
+
+            // We only display the last five users of the batch
+            const samples = batch.slice(-5); 
+            
+            let htmlString = "";
+            samples.forEach(user => {
+                htmlString += `
+                    <div class="mb-1 flex gap-3 text-gray-300">
+                        <span class="text-green-400">[${new Date().toLocaleTimeString()}]</span> 
+                        <span class="text-blue-300 font-bold">${user.city}</span> 
+                        <span>${user.name} (${user.age} yo) ingested.</span>
+                    </div>
+                `;
+            });
+            
+            liveFeedEl.insertAdjacentHTML('afterbegin', htmlString);
+
+            while (liveFeedEl.children.length > 50) {
+                liveFeedEl.lastElementChild.remove();
+            }
+        });
+
         // Listen the metrics
         const latencyListEl = document.getElementById('latency-list');
         // Store the latest metrics per city to update the UI
