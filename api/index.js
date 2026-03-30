@@ -48,29 +48,6 @@ const startConsumer = async() => {
     });
 };
 
-// ROUTES
-app.post(
-    '/user',
-    async (req, res) => {
-        const data = req.body;
-
-       try {
-            await sendToKafka(data, process.env.KAFKA_TOPIC_DATA);
-            io.emit(SOCKET_EVENTS.USER_UPDATE_EVENT, data);
-
-            return res.status(200).json({
-                message: "OK"
-            });
-       } catch (error) {
-            res.status(500).json({
-                error: "Kafka error"
-            });
-
-            console.error("Kafka error :", error.message);
-       } 
-    }
-);
-
 app.post(
     '/users/batch',
     async (req, res) => {
@@ -89,7 +66,7 @@ app.post(
             });
 
             io.emit('user_update_batch', batch);
-            
+
             return res.status(200).json({
                 message: "Batch OK",
                 count: batch.length
