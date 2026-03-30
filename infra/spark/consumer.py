@@ -4,8 +4,9 @@ from pyspark.sql.types import StructType, StructField, StringType, TimestampType
 from pyspark.sql.functions import from_json, col, current_timestamp, expr, window, count, avg, min, max
 
 # ENV
-MYSQL_PWD = os.environ.get("MYSQL_ROOT_PASSWORD", "root")
-MYSQL_DB = os.environ.get("MYSQL_DATABASE", "users")
+MONGO_USER = os.environ.get("MONGODB_USER", "root")
+MONGO_PWD = os.environ.get("MONGODB_PASSWORD", "root")
+MONGO_DB = os.environ.get("MONGODB_DATABASE", "users")
 KAFKA_TOPIC_DATA = os.environ.get("KAFKA_TOPIC_DATA", "users")
 KAFKA_TOPIC_METRICS = os.getenv("KAFKA_TOPIC_METRICS", "metrics")
 BATCH_INTERVAL = os.environ.get("BATCH_INTERVAL", "2 seconds")
@@ -19,13 +20,10 @@ def process_batch(batch_df, batch_id):
 
     if count > 0 :
         batch_df.drop("latency_seconds").write \
-            .format("jdbc") \
-            .option("url", f"jdbc:mysql://mysql:3306/{MYSQL_DB}?useSSL=false&allowPublicKeyRetrieval=true&rewriteBatchedStatements=true") \
-            .option("driver", "com.mysql.cj.jdbc.Driver") \
-            .option("dbtable", "users") \
-            .option("user", "root") \
-            .option("password", MYSQL_PWD) \
-            .option("batchsize", "10000") \
+            .format("mongodb") \
+            .option("spark.mongodb.write.connection.uri", f"mongodb://{MONGO_USER}:{MONGO_PWD}@mongodb:27017/?authSource=admin") \
+            .option("database", MONGO_DB) \
+            .option("collection", "users") \
             .mode("append") \
             .save()
 
@@ -94,7 +92,7 @@ parsed_df = df.selectExpr("cast(value as string)") \
 # Write data flux in db  
 query = parsed_df.writeStream \
 .foreachBatch(process_batch) \
-.option("checkpointLocation", "/tmp/spark_checkpoints_mysql") \
+.option("checkpointLocation", "/tmp/spark_checkpoints_mongo") \
 .trigger(processingTime=BATCH_INTERVAL) \
 .start()
 
