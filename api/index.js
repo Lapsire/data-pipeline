@@ -13,6 +13,12 @@ const { Server } = require('socket.io');
 
 const app = express();                
 const server = http.createServer(app);
+
+// Extends the timeouts
+server.keepAliveTimeout = 65000; 
+server.headersTimeout = 66000;  
+server.timeout = 120000;         
+
 const io = new Server(server);        
 
 
