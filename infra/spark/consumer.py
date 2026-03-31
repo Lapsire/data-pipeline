@@ -1,24 +1,25 @@
 import os
 from pyspark.sql import SparkSession
 from pyspark.sql.types import StructType, StructField, StringType, TimestampType, IntegerType
-from pyspark.sql.functions import from_json, col, current_timestamp, expr, window, count, avg, min, max
+from pyspark.sql.functions import from_json, col, current_timestamp, expr, avg, min, max, lit, count
 
 # ENV
-MONGO_USER = os.environ.get("MONGODB_USER", "root")
-MONGO_PWD = os.environ.get("MONGODB_PASSWORD", "root")
-MONGO_DB = os.environ.get("MONGODB_DATABASE", "users")
-KAFKA_TOPIC_DATA = os.environ.get("KAFKA_TOPIC_DATA", "users")
+MONGO_USER = os.getenv("MONGODB_USER", "root")
+MONGO_PWD = os.getenv("MONGODB_PASSWORD", "root")
+MONGO_DB = os.getenv("MONGODB_DATABASE", "users")
+KAFKA_TOPIC_DATA = os.getenv("KAFKA_TOPIC_DATA", "users")
 KAFKA_TOPIC_METRICS = os.getenv("KAFKA_TOPIC_METRICS", "metrics")
-BATCH_INTERVAL = os.environ.get("BATCH_INTERVAL", "2 seconds")
+BATCH_INTERVAL = os.getenv("BATCH_INTERVAL", "2 seconds")
+INTERVAL_SECONDS = float(BATCH_INTERVAL.split(" ")[0])
 
 def process_batch(batch_df, batch_id):
 
     batch_df.cache()
     
     # Count the batch size
-    count = batch_df.count()
+    batch_size = batch_df.count()
 
-    if count > 0 :
+    if batch_size > 0 :
         batch_df.drop("latency_seconds").write \
             .format("mongodb") \
             .option("spark.mongodb.write.connection.uri", f"mongodb://{MONGO_USER}:{MONGO_PWD}@mongodb:27017/?authSource=admin") \
@@ -27,35 +28,21 @@ def process_batch(batch_df, batch_id):
             .mode("append") \
             .save()
 
-        # Count latency for processing
-        latency_metrics = batch_df.select(
+        # Compute metrics
+        metrics_df = batch_df.select(
+            count("*").alias("count"),
             min("latency_seconds").alias("min_latency"),
             max("latency_seconds").alias("max_latency"),
             avg("latency_seconds").alias("avg_latency")
-        ).collect()[0]
+        ).withColumn("throughput", col("count") / lit(INTERVAL_SECONDS))
 
-        # Troughput calcul
-        interval_sec = int(BATCH_INTERVAL.split(" ")[0]) 
-        throughput = count / interval_sec
-
-        # Send metrics to kafka
-        metrics = [(
-            int(count), 
-            float(throughput), 
-            float(latency_metrics["min_latency"]),
-            float(latency_metrics["max_latency"]),
-            float(latency_metrics["avg_latency"])
-        )]
-
-        column = ["count", "throughput", "min_latency", "max_latency", "avg_latency"]
-        metrics_df = spark.createDataFrame(metrics, column)
-
+        # Send metrics
         metrics_df.selectExpr("to_json(struct(*)) as value").write \
             .format("kafka") \
             .option("kafka.bootstrap.servers", "kafka:29092") \
             .option("topic", KAFKA_TOPIC_METRICS) \
             .save()
-    
+        
     batch_df.unpersist()
 
 spark = SparkSession.builder\
