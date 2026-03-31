@@ -96,4 +96,5 @@ services:
       - MONGODB_DATABASE=${MONGODB_DATABASE}
       - KAFKA_TOPIC_DATA=${KAFKA_TOPIC_DATA}
       - BATCH_INTERVAL=${BATCH_INTERVAL_SEC}
+      - BATCH_ROWS_LIMIT=${BATCH_ROWS_LIMIT}
     command: bash /opt/bitnami/spark/jobs/launch-consumer.sh

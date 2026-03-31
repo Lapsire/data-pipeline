@@ -10,6 +10,7 @@ MONGO_DB = os.getenv("MONGODB_DATABASE", "users")
 KAFKA_TOPIC_DATA = os.getenv("KAFKA_TOPIC_DATA", "users")
 KAFKA_TOPIC_METRICS = os.getenv("KAFKA_TOPIC_METRICS", "metrics")
 BATCH_INTERVAL = os.getenv("BATCH_INTERVAL", "2 seconds")
+BATCH_ROWS_LIMIT = int(os.getenv("BATCH_ROW_LIMIT", "100000"))
 INTERVAL_SECONDS = float(BATCH_INTERVAL.split(" ")[0])
 
 def process_batch(batch_df, batch_id):
@@ -67,6 +68,7 @@ df = spark.readStream \
     .option("kafka.bootstrap.servers", "kafka:29092") \
     .option("subscribe", KAFKA_TOPIC_DATA) \
     .option("startingOffsets", "earliest") \
+    .option("maxOffsetsPerTrigger", BATCH_ROWS_LIMIT) \
     .load()
 
 # Apply shape to the raw data from kafka
