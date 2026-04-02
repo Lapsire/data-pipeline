@@ -12,18 +12,25 @@ if [ "$STRESS_TEST_ENABLED" != "true" ]; then
     exit 0
 fi
 
-
 echo "STARTING STRESS TEST..."
 
 # Pause container
 docker pause spark-submitter
 
-# Sleep until kafka is full
-WAIT_TIME=${STRESS_TEST_WAIT_TIME:-30}
-echo "Waiting for ${WAIT_TIME}"
+# Fonction appelée lors du Ctrl+C
+cleanup() {
+    echo ""
+    echo "Ctrl+C detected — unpausing spark-submitter..."
+    docker unpause spark-submitter
+    exit 0
+}
 
-sleep $WAIT_TIME
+# Trap Ctrl+C
+trap cleanup SIGINT
 
-# Letting spark do the job
-echo "Free spark"
-docker unpause spark-submitter
+echo "Container paused. Waiting indefinitely... (Press Ctrl+C to continue)"
+
+# Infinite loop waiting the SIGINT
+while true; do
+    sleep 1
+done
