@@ -13,9 +13,19 @@ const { Server } = require('socket.io');
 
 const app = express();                
 const server = http.createServer(app);
+
+// Extends the timeouts
+server.keepAliveTimeout = 65000; 
+server.headersTimeout = 66000;  
+server.timeout = 120000;         
+
 const io = new Server(server);        
 
-app.use(express.json());
+
+// EXTENDS SIZE LIMIT
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
+
 app.use(express.static('public')); // SERVE DASHBOARD
 
 // PRODUCER KAFKA

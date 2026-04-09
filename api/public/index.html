@@ -1,11 +1,10 @@
 <!DOCTYPE html>
-<html lang="en" class="dark">
+<html lang="fr" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="/socket.io/socket.io.js"></script>
     <style>
         ::-webkit-scrollbar { width: 6px; }
@@ -24,76 +23,76 @@
         </div>
     </header>
 
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
 
-        <div class="bg-gray-800 rounded-xl p-6 border border-gray-700 shadow-lg col-span-1 lg:col-span-1 flex flex-col justify-center items-center">
-            <h2 class="text-gray-400 text-sm font-semibold uppercase tracking-wider mb-2">Total Users Ingested</h2>
-            <div id="total-users" class="text-6xl font-black text-blue-400 tabular-nums">0</div>
-            <p class="text-gray-500 text-xs mt-2">Comes from HTTP Workers</p>
+        <div class="bg-gray-800 rounded-xl p-6 border border-gray-700 shadow-lg flex flex-col justify-center items-center text-center">
+            <h2 class="text-gray-400 text-sm font-semibold uppercase tracking-wider mb-2">Total Ingested (API)</h2>
+            <div id="total-users" class="text-5xl font-black text-blue-400 tabular-nums">0</div>
+            <p class="text-gray-500 text-xs mt-2 font-mono">Pushed to Kafka Queue</p>
         </div>
 
-        <div class="bg-gray-800 rounded-xl p-6 border border-gray-700 shadow-lg col-span-1 lg:col-span-2">
-            <h2 class="text-gray-400 text-sm font-semibold uppercase tracking-wider mb-4">Live Volume by City (1 min Window)</h2>
-            <div class="relative h-64 w-full">
-                <canvas id="cityChart"></canvas>
+        <div class="bg-gray-800 rounded-xl p-6 border border-gray-700 shadow-lg flex flex-col justify-center items-center text-center">
+            <h2 class="text-gray-400 text-sm font-semibold uppercase tracking-wider mb-2">True DB Count</h2>
+            <div id="db-count" class="text-5xl font-black text-emerald-400 tabular-nums">0</div>
+            <p class="text-gray-500 text-xs mt-2 font-mono">Confirmed in MongoDB</p>
+        </div>
+
+        <div class="bg-gray-800 rounded-xl p-6 border border-gray-700 shadow-lg flex flex-col justify-center items-center text-center">
+            <h2 class="text-gray-400 text-sm font-semibold uppercase tracking-wider mb-2">Lag</h2>
+            <div id="kafka-lag" class="text-5xl font-black text-rose-400 tabular-nums">0</div>
+            <p class="text-gray-500 text-xs mt-2 font-mono">Messages Pending</p>
+        </div>
+
+        <div class="bg-gray-800 rounded-xl p-6 border border-gray-700 shadow-lg flex flex-col justify-center items-center text-center">
+            <h2 class="text-gray-400 text-sm font-semibold uppercase tracking-wider mb-2">Spark Throughput</h2>
+            <div class="flex items-baseline gap-2">
+                <div id="throughput" class="text-5xl font-black text-amber-400 tabular-nums">0</div>
+                <span class="text-gray-400 font-bold">r/s</span>
+            </div>
+            <p class="text-gray-500 text-xs mt-2 font-mono">Rows/sec to MongoDB</p>
+        </div>
+
+        <div class="bg-gray-800 rounded-xl p-6 border border-gray-700 shadow-lg col-span-1 md:col-span-2 lg:col-span-4 flex flex-col justify-center items-center">
+            <h2 class="text-gray-400 text-sm font-semibold uppercase tracking-wider mb-4">End-to-End Latency (Seconds)</h2>
+            <div class="flex w-full justify-around text-center">
+                <div>
+                    <div class="text-gray-500 text-xs uppercase mb-1">Minimum</div>
+                    <div id="lat-min" class="text-3xl font-bold text-green-400 tabular-nums">0.000</div>
+                </div>
+                <div>
+                    <div class="text-gray-500 text-xs uppercase mb-1">Average</div>
+                    <div id="lat-avg" class="text-4xl font-black text-blue-400 tabular-nums">0.000</div>
+                </div>
+                <div>
+                    <div class="text-gray-500 text-xs uppercase mb-1">Maximum</div>
+                    <div id="lat-max" class="text-3xl font-bold text-red-400 tabular-nums">0.000</div>
+                </div>
             </div>
         </div>
+    </div>
 
-        <div class="bg-gray-800 rounded-xl p-6 border border-gray-700 shadow-lg col-span-1 lg:col-span-2">
-            <h2 class="text-gray-400 text-sm font-semibold uppercase tracking-wider mb-4">Live Raw Feed</h2>
-            <div class="bg-gray-900 rounded border border-gray-700 h-64 overflow-y-auto p-4 font-mono text-xs" id="live-feed">
-                </div>
-        </div>
-
-        <div class="bg-gray-800 rounded-xl p-6 border border-gray-700 shadow-lg col-span-1 lg:col-span-1">
-            <h2 class="text-gray-400 text-sm font-semibold uppercase tracking-wider mb-4">Avg Latency (End-to-End)</h2>
-            <ul id="latency-list" class="space-y-4">
-                <li class="text-gray-500 italic text-sm">Waiting for Spark calculations...</li>
-                </ul>
-        </div>
-
+    <div class="bg-gray-800 rounded-xl p-6 border border-gray-700 shadow-lg">
+        <h2 class="text-gray-400 text-sm font-semibold uppercase tracking-wider mb-4">Live Raw Feed (Samples)</h2>
+        <div class="bg-gray-900 rounded border border-gray-700 h-64 overflow-y-auto p-4 font-mono text-xs" id="live-feed">
+            </div>
     </div>
 
     <script>
         const socket = io();
 
-        // State vars
-        let totalIngested = 0;
-        const chartData = {
-            labels: ['Paris', 'Lyon', 'Nice', 'Toulon'],
-            datasets: [{
-                label: 'Users per 1 min',
-                data: [0, 0, 0, 0],
-                backgroundColor: [
-                    'rgba(59, 130, 246, 0.8)', // Blue
-                    'rgba(139, 92, 246, 0.8)', // Purple
-                    'rgba(16, 185, 129, 0.8)', // Emerald
-                    'rgba(245, 158, 11, 0.8)'  // Amber
-                ],
-                borderRadius: 4
-            }]
-        };
-        let latestWindowStart = "";
-
-        const ctx = document.getElementById('cityChart').getContext('2d');
-        const cityChart = new Chart(ctx, {
-            type: 'bar',
-            data: chartData,
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                animation: { duration: 500 },
-                plugins: { legend: { display: false } },
-                scales: {
-                    y: { beginAtZero: true, grid: { color: '#374151' }, ticks: { color: '#9CA3AF' } },
-                    x: { grid: { display: false }, ticks: { color: '#9CA3AF' } }
-                }
-            }
-        });
-
+        // DOM Refs
         const totalUsersEl = document.getElementById('total-users');
+        const dbCountEl = document.getElementById('db-count');
+        const kafkaLagEl = document.getElementById('kafka-lag');
+        const throughputEl = document.getElementById('throughput');
+        const latMinEl = document.getElementById('lat-min');
+        const latAvgEl = document.getElementById('lat-avg');
+        const latMaxEl = document.getElementById('lat-max');
         const liveFeedEl = document.getElementById('live-feed');
 
+        // State vars
+        let totalIngested = 0;
+        let dbCount = 0;
         let bufferedCount = 0;
         let userLogsBuffer = [];
 
@@ -102,9 +101,19 @@
             
             userLogsBuffer.push(...payload.samples);
             
-            if (userLogsBuffer.length > 15) {
-                userLogsBuffer = userLogsBuffer.slice(-15);
+            if (userLogsBuffer.length > 20) {
+                userLogsBuffer = userLogsBuffer.slice(-20);
             }
+        });
+
+        socket.on('metrics_update', (metric) => {
+            dbCount += metric.count; 
+            dbCountEl.innerText = dbCount.toLocaleString();
+
+            throughputEl.innerText = Math.round(metric.throughput).toLocaleString();
+            latMinEl.innerText = metric.min_latency.toFixed(3);
+            latAvgEl.innerText = metric.avg_latency.toFixed(3);
+            latMaxEl.innerText = metric.max_latency.toFixed(3);
         });
 
         setInterval(() => {
@@ -113,82 +122,30 @@
                 totalUsersEl.innerText = totalIngested.toLocaleString();
                 bufferedCount = 0;
             }
+            
+            const lag = Math.max(0, totalIngested - dbCount);
+            kafkaLagEl.innerText = lag.toLocaleString();
 
             if (userLogsBuffer.length > 0) {
                 let htmlString = "";
                 userLogsBuffer.forEach(user => {
                     htmlString += `
-                        <div class="mb-1 flex gap-3 text-gray-300">
-                            <span class="text-green-400">[${new Date().toLocaleTimeString()}]</span> 
-                            <span class="text-blue-300 font-bold">${user.city}</span> 
+                        <div class="mb-1 flex gap-3 text-gray-300 border-l-2 border-blue-500 pl-2">
+                            <span class="text-green-400 font-bold">[${new Date().toLocaleTimeString()}]</span> 
+                            <span class="text-blue-300 font-bold uppercase">${user.city}</span> 
                             <span>${user.name} (${user.age} yo) ingested.</span>
                         </div>
                     `;
                 });
                 
                 liveFeedEl.insertAdjacentHTML('afterbegin', htmlString);
-                userLogsBuffer = []; // On vide le tampon des logs
+                userLogsBuffer = [];
 
                 while (liveFeedEl.children.length > 50) {
                     liveFeedEl.lastElementChild.remove();
                 }
             }
         }, 250);
-
-        // Listen the metrics
-        const latencyListEl = document.getElementById('latency-list');
-        // Store the latest metrics per city to update the UI
-        const currentMetrics = {}; 
-
-        socket.on('metrics_update', (metric) => {
-            if (latencyListEl.innerHTML.includes("Waiting")) latencyListEl.innerHTML = '';
-
-            const city = metric.city;
-            const windowStart = metric.window.start; 
-            if (windowStart < latestWindowStart) return;
-            
-            if (windowStart > latestWindowStart) {
-                latestWindowStart = windowStart;
-            }
-
-            const volume = metric.volume;
-            // Round latency to 3 decimals
-            const latency = parseFloat(metric.avg_latency).toFixed(3); 
-
-            // Save to local state
-            currentMetrics[city] = { volume, latency };
-
-            // Update the chart
-            const cityIndex = chartData.labels.indexOf(city);
-            if (cityIndex !== -1) {
-                chartData.datasets[0].data[cityIndex] = volume;
-                cityChart.update();
-            }
-
-            renderLatencyBoard();
-        });
-
-        function renderLatencyBoard() {
-            latencyListEl.innerHTML = '';
-            for (const [city, data] of Object.entries(currentMetrics)) {
-                
-                // Determine color based on latency (Good < 0.5s, Medium < 1.5s, Bad > 1.5s)
-                let colorClass = "text-green-400";
-                if (data.latency > 1.5) colorClass = "text-red-400";
-                else if (data.latency > 0.5) colorClass = "text-yellow-400";
-
-                const li = document.createElement('li');
-                li.className = 'flex justify-between items-center bg-gray-700/50 p-3 rounded-lg border border-gray-600';
-                li.innerHTML = `
-                    <span class="font-semibold text-gray-200">${city}</span>
-                    <div class="flex flex-col items-end">
-                        <span class="${colorClass} font-mono font-bold">${data.latency}s</span>
-                        <span class="text-xs text-gray-400">${data.volume} msgs/1 min</span>
-                    </div>
-                `;
-                latencyListEl.appendChild(li);
-            }
-        }
     </script>
 </body>
 </html>

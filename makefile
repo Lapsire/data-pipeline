@@ -24,3 +24,7 @@ up:
 down:
 	make infra-down
 	make producer-down
+
+stress-test:
+	@chmod +x ./infra/spark/stress-test.sh
+	@./infra/spark/stress-test.sh

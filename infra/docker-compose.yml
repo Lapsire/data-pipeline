@@ -32,31 +32,15 @@ services:
       - ./kafka/kafka-init.sh:/scripts/kafka-init.sh
     command: bash /scripts/kafka-init.sh
 
-  mysql:
-    image: mysql:8.0            
-    container_name: mysql
-    restart: always
+  mongodb:
+    image: mongo:6.0
+    container_name: mongodb
+    restart: unless-stopped
     ports:
-      - "${MYSQL_PORT}:3306"            
+      - "${MONGODB_PORT}:27017"
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-      MYSQL_DATABASE: ${MYSQL_DATABASE}
-    volumes:
-      # Init table
-      - ./mysql/db-users.sql:/docker-entrypoint-initdb.d/init.sql
-      # Uncomment to keep data after down
-      # - ./mysql_data:/var/lib/mysql
-
-  phpmyadmin:
-    image: phpmyadmin/phpmyadmin
-    container_name: phpmyadmin
-    depends_on:
-      - mysql
-    environment:
-      PMA_HOST: mysql
-    restart: always
-    ports:
-      - "${PMA_PORT}:80"
+      MONGO_INITDB_ROOT_USERNAME: ${MONGODB_ROOT_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGODB_ROOT_PASSWORD}
 
   api:
     build: ../api
@@ -107,8 +91,10 @@ services:
     volumes:
       - ./spark:/opt/bitnami/spark/jobs
     environment:
-      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
-      - MYSQL_DATABASE=${MYSQL_DATABASE}
+      - MONGODB_USER=${MONGODB_ROOT_USERNAME}
+      - MONGODB_PASSWORD=${MONGODB_ROOT_PASSWORD}
+      - MONGODB_DATABASE=${MONGODB_DATABASE}
       - KAFKA_TOPIC_DATA=${KAFKA_TOPIC_DATA}
       - BATCH_INTERVAL=${BATCH_INTERVAL_SEC}
+      - BATCH_ROWS_LIMIT=${BATCH_ROWS_LIMIT}
     command: bash /opt/bitnami/spark/jobs/launch-consumer.sh
